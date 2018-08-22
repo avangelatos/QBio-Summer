@@ -1,0 +1,192 @@
+---
+title: "K-Means Tutorial"
+output: html_document
+---
+
+```{r}
+#Loading iris dataset
+data(iris)
+
+#Viewing the head of iris
+head(iris)
+```
+
+```{r}
+#Removing "Species column"
+iris_2<-iris[-5]
+head(iris_2)
+
+#Standardize data
+iris_3<-as.data.frame(scale(iris_2))
+head(iris_3)
+
+```
+
+```{r}
+#Checking Mean and SD of data before and after standardization
+sapply(iris_2,mean)
+sapply(iris_2,sd)
+sapply(iris_3,mean)
+sapply(iris_3,sd)
+```
+
+```{r}
+install.packages("NbClust")
+library(NbClust)
+
+# creating function wssplot
+wssplot <- function(data, nc=15, seed=1234){
+wss <- (nrow(data)-1)*sum(apply(data,2,var))
+for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+plot(1:nc, wss, type="b", xlab="Number of Clusters",
+ylab="Within groups sum of squares")}
+
+# calling function wssplot()
+wssplot(iris_3,nc=30,seed=1234)
+
+# fitting the clusters
+iris_kmeans<-kmeans(iris_3,7)
+iris_kmeans$centers
+iris_kmeans$size
+iris$clstr<-iris_kmeans$cluster
+
+# cross-validation with original species available in data
+
+iris$clstr<-iris_kmeans$cluster
+table(iris$Species,iris$clstr)
+```
+
+```{r}
+install.packages("jpeg")
+library("jpeg")
+
+dog_img <- readJPEG("springer_puppy.jpg")
+img_Dm <- dim(dog_img)
+```
+
+```{r}
+# Assigning RGB Channels to a data frame
+img_RGB <- data.frame(
+  x_axis = rep(1:img_Dm[2], each = img_Dm[1]),
+  y_axis = rep(img_Dm[1]:1, img_Dm[2]),
+  Red = as.vector(dog_img[,,1]),
+  Green = as.vector(dog_img[,,2]),
+  Blue = as.vector(dog_img[,,3])
+)
+
+head(img_RGB, 10)
+```
+
+```{r}
+library(ggplot2)
+
+# Plot the image
+ggplot(data = img_RGB, aes(x = x_axis, y = y_axis)) +
+  geom_point(colour = rgb(img_RGB[c("Red", "Green", "Blue")])) +
+  labs(title = "Original Image") +
+  xlab("x-axis") +
+  ylab("y-axis")
+
+```
+
+```{r}
+#Running the WSSPLOT function again
+wssplot <- function(data, nc=15, seed=1234){
+  wss <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+
+wssplot(img_RGB[c(3,4,5)],30)
+```
+
+```{r}
+#running the k-means algorithm
+
+k_cluster <- 15
+k_img_clstr <- kmeans(img_RGB[, c("Red", "Green", "Blue")],
+                      centers = k_cluster)
+k_img_colors <- rgb(k_img_clstr$centers[k_img_clstr$cluster,])
+
+#plotting the compressed image
+ggplot(data = img_RGB, aes(x = x_axis, y = y_axis)) +
+  geom_point(colour = k_img_colors) +
+  labs(title = paste("k-Means Clustering of", k_cluster, "Colours")) +
+  xlab("x") +
+  ylab("y")
+```
+```{r}
+#running the k-means algorithm
+
+k_cluster <- 75
+k_img_clstr <- kmeans(img_RGB[, c("Red", "Green", "Blue")],
+                      centers = k_cluster)
+k_img_colors <- rgb(k_img_clstr$centers[k_img_clstr$cluster,])
+
+#plotting the compressed image
+ggplot(data = img_RGB, aes(x = x_axis, y = y_axis)) +
+  geom_point(colour = k_img_colors) +
+  labs(title = paste("k-Means Clustering of", k_cluster, "Colours")) +
+  xlab("x") +
+  ylab("y")
+```
+
+```{r}
+soph_img <- readJPEG("soph.jpg")
+img_Dim <- dim(soph_img)
+
+# Assigning RGB Channels to a data frame
+img1_RGB <- data.frame(
+  x_axis1 = rep(1:img_Dim[2], each = img_Dim[1]),
+  y_axis1 = rep(img_Dim[1]:1, img_Dim[2]),
+  Red = as.vector(soph_img[,,1]),
+  Green = as.vector(soph_img[,,2]),
+  Blue = as.vector(soph_img[,,3])
+)
+
+head(img1_RGB, 10)
+```
+```{r}
+library(ggplot2)
+
+# Plot the image
+ggplot(data = img1_RGB, aes(x = x_axis1, y = y_axis1)) +
+  geom_point(colour = rgb(img1_RGB[c("Red", "Green", "Blue")])) +
+  labs(title = "Original Image") +
+  xlab("x-axis") +
+  ylab("y-axis")
+```
+
+```{r}
+#Running the WSSPLOT function again
+wssplot1 <- function(data, nc=15, seed=1234){
+  wss1 <- (nrow(data)-1)*sum(apply(data,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss1[i] <- sum(kmeans(data, centers=i)$withinss)}
+  plot(1:nc, wss1, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")}
+
+wssplot1(img1_RGB[c(3,4,5)],30)
+```
+
+```{r}
+#running the k-means algorithm
+
+k_cluster1 <- 25
+k_img_clstr1 <- kmeans(img1_RGB[, c("Red", "Green", "Blue")],
+                      centers = k_cluster1)
+k_img_colors1 <- rgb(k_img_clstr1$centers[k_img_clstr1$cluster,])
+
+#plotting the compressed image
+ggplot(data = img1_RGB, aes(x = x_axis1, y = y_axis1)) +
+  geom_point(colour = k_img_colors1) +
+  labs(title = paste("k-Means Clustering of", k_cluster1, "Colours")) +
+  xlab("x") +
+  ylab("y")
+```
+
