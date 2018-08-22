@@ -1,0 +1,284 @@
+---
+title: "Markov Model"
+output: html_document
+---
+
+```{r}
+## STI Model: Assuiming everyone is sexually active, with one new partner every time step (yikes that's once a week)
+
+pS <- 0.99
+pI <- 0.01
+pT <- 0
+
+nstates <- 3 # set the number of states
+# define the transition matrix for the Markov model
+Tmatrix <- matrix(c((1-(pI*0.65)),(pI*0.65),0,0.02,0.48,0.5,1,0,0),nrow=nstates,ncol=nstates)
+
+nstep <- 52 # number of time steps to propagate
+
+ProbVec <- matrix(0,nrow=nstates, ncol=nstep+1) # initialize the probability array
+ProbVec[,1] <- c(pS,pI,pT) # set the initial probability vector
+
+for (i in 1:nstep) { # iteratively propagate the probability vector
+  pI <- ProbVec[2, i]
+  pS <- ProbVec[1, i]
+  Tmatrix[1, 1] <- (1-(pI*0.65))
+  Tmatrix[2, 1] <- (pI*0.65)
+  ProbVec[,i+1] <- Tmatrix %*% ProbVec[,i]
+}
+
+ndisp <- 52 # number of timepoints to display
+# select exactly ndisp timepoints to display within dstep times
+tpoints <- 1+nstep%/%ndisp*0:(ndisp-1)
+
+# plot the probability distribution at ndisp time points
+barplot(ProbVec[,tpoints], main="Everyone is Sexually Active", xlab="Time Step (weeks)", ylab="Proportion of Poulation", axes=TRUE,names.arg=tpoints,col=c('cornflowerblue','deeppink','plum2'))
+
+```
+
+```{r}
+## SITN Model: Accounts for portion of population that isn't sexulally active AND changes timestep to a month
+
+pS <- 0.39 #(.99*0.4) bc 40% of pop is sexually active
+pI <- 0.01 #(.01*0.4)
+pT <- 0
+pN <- 0.6
+
+nstates <- 4 # set the number of states
+# define the transition matrix for the Markov model
+Tmatrix <- matrix(c((1-(pI*0.65)-0.26),(pI*0.65),0,0.26,0.06,0.69,0.25,0,1,0,0,0,0.26,0,0,0.74),nrow=nstates,ncol=nstates)
+
+nstep <- 24 # number of time steps to propagate
+
+ProbVec <- matrix(0,nrow=nstates, ncol=nstep+1) # initialize the probability array
+ProbVec[,1] <- c(pS,pI,pT,pN) # set the initial probability vector
+
+for (i in 1:nstep) { # iteratively propagate the probability vector
+  pS <- ProbVec[1, i]
+  pI <- ProbVec[2, i]
+  Tmatrix[1, 1] <- (1-(pI*0.65)-0.26)
+  Tmatrix[2, 1] <- (pI*0.65)
+  ProbVec[,i+1] <- Tmatrix %*% ProbVec[,i]
+}
+
+ndisp <- 24 # number of timepoints to display
+# select exactly ndisp timepoints to display within dstep times
+tpoints <- 1+nstep%/%ndisp*0:(ndisp-1)
+
+# plot the probability distribution at ndisp time points
+barplot(ProbVec[,tpoints], main= "SITN Model- One Neighborhood", xlab= "Time steps (months)", ylab="Portion of Population", axes=TRUE,names.arg=tpoints,col=c('cornflowerblue','deeppink','plum2','blue'), legend.text=c("Suceptible", "Infected", "Treated", "Inactive"))
+
+
+```
+
+
+```{r}
+## Inter-Neighborhood Model (2 Neighborhoods): Adjusts infection rate based on travel to other neighborhoods
+
+nstates <- 4 # set the number of states
+nstep <- 24 # number of time steps to propagate
+nhoods <- 2 # number of neighborhoods
+
+### Initial Probability Array
+pS <- array(0.39, dim = c(1, nhoods))
+pI <- array(0.01, dim = c(1, nhoods))
+pT <- array(0, dim = c(1, nhoods))
+pN <- array(0.6, dim = c(1, nhoods))
+ProbVec <- array(NA,dim = c(nstates, nhoods, nstep+1)) #initialize 3D probability matrix
+ProbVec[,,1] <- rbind(pS, pI, pT, pN)
+
+### Create Distance Array
+DistMat <- matrix(c(0,0.5,0.5,0), nrow=nhoods, ncol=nhoods)
+DistMat <- 1-DistMat
+
+### Define Parameters ###
+gamma <- 0.06 #0.75 gon't get tested --> 0.75*(1/12) to account for year to recover naturally
+phi <- 0.26 #mean number of new partners
+
+# define array of mu values for all neighborhoods
+univ_mu <- 0.25 #0.25 get tested--> 0.25*(poverty value)
+poverty_scale <- c(2,.75)#array of scales for each hoods poverty level
+mu <- array(poverty_scale*0.25)
+
+
+### Define Beta and the Transition Matrix ###
+beta <- matrix(NA, nrow=nhoods, ncol=nstep+1)
+Tmatrix <- array(NA, dim= c(nstates, nstates, nhoods))
+
+for (j in 1: nstep){
+  for (i in 1:nhoods) {
+  beta[i,j] <- ((ProbVec[2,,j] %*% DistMat[,i])*0.65) #neighborhood 1, 2, etc..
+  Tmatrix[,1,i] <- c((1-(beta[i,j]+phi)), beta[i,j], 0, phi)
+  Tmatrix[,2,i] <- c(gamma, (1-(gamma+mu[i])), mu[i], 0)
+  Tmatrix[,3,i] <- c(1,0,0,0)
+  Tmatrix[,4,i] <- c(phi, 0, 0, (1-phi))
+  ProbVec[,i,j+1] <- Tmatrix[,,i] %*% ProbVec[,i,j]
+  }
+}
+Tmatrix
+ProbVec
+
+ndisp <- 24 # number of timepoints to display
+# select exactly ndisp timepoints to display within dstep times
+tpoints <- 1+nstep%/%ndisp*0:(ndisp-1)
+
+# plot the probability distribution at ndisp time points
+for (k in 1:nhoods){
+  barplot(ProbVec[,k,tpoints], main= paste("SITN Model for Neighborhood", k), xlab= "Time steps (months)", ylab="Portion of Population", axes=TRUE,names.arg=tpoints,col=c('cornflowerblue','deeppink','plum2','blue'), legend.text=c("Suceptible", "Infected", "Treated", "Inactive"))
+}
+
+```
+
+
+
+```{r}
+## Inter-Neighborhood Model (All 77 Neighborhoods)
+
+nstates <- 4 # set the number of states
+nstep <- 24 # number of time steps to propagate
+nhoods <- 77 # number of neighborhoods
+
+### Initial Probability Array
+pS <- array(0.39, dim = c(1, nhoods))
+pI <- array(0.01, dim = c(1, nhoods))
+pT <- array(0, dim = c(1, nhoods))
+pN <- array(0.6, dim = c(1, nhoods))
+ProbVec <- array(NA,dim = c(nstates, nhoods, nstep+1)) #initialize 3D probability matrix
+ProbVec[,,1] <- rbind(pS, pI, pT, pN)
+
+### Create Distance Array
+DistMat <- read.csv("DistanceMat.csv", header = TRUE, row.names = 1) # distance matrix 
+#DistMat <- (1-((abs(DistMat))/(max(DistMat)))) 
+DistMat <- DistMat/rowSums(DistMat) #normalizing all rows in matrix to sum to 1
+
+
+### Define Parameters ###
+gamma <- 0.06 #0.75 gon't get tested --> 0.75*(1/12) to account for year to recover naturally
+phi <- 0.26 #mean number of new partners
+
+# neighborhood metadata
+neighborhood_info <- read.csv("chicago-pop-data copy.csv", header = TRUE) # has neighborhood poverty level and name~number
+
+# define array of mu values for all neighborhoods
+univ_mu <- 0.25 #0.25 get tested--> 0.25*(poverty value)
+poverty_coefficients <- 1 - ((neighborhood_info$Percent_Poverty) * .01) 
+mu <- as.array(univ_mu * poverty_coefficients) # vector with neighborhood based rate of seeking treatment; higher chance of seeking treatment for lower percent poverty 
+
+
+### Define Beta and the Transition Matrix ###
+beta <- matrix(NA, nrow=nhoods, ncol=nstep+1)
+Tmatrix <- array(NA, dim= c(nstates, nstates, nhoods, nstep+1))
+
+
+for (j in 1: nstep){
+  for (i in 1:nhoods) {
+  beta[i,j] <- ((ProbVec[2,,j] %*% DistMat[,i])*0.65) #neighborhood 1, 2, etc..
+  Tmatrix[,1,i,1] <- c((1-(beta[i,1]+phi)), beta[i,1], 0, phi)
+  Tmatrix[,2,i,1] <- c(gamma, (1-(gamma+mu[i])), mu[i], 0)
+  Tmatrix[,3,i,1] <- c(1,0,0,0)
+  Tmatrix[,4,i,1] <- c(phi, 0, 0, (1-phi))
+  Tmatrix[,1,i,j] <- c((1-(beta[i,j]+phi)), beta[i,j], 0, phi)
+  Tmatrix[,2,i,j] <- c(gamma, (1-(gamma+mu[i])), mu[i], 0)
+  Tmatrix[,3,i,j] <- c(1,0,0,0)
+  Tmatrix[,4,i,j] <- c(phi, 0, 0, (1-phi))
+  ProbVec[,i,j+1] <- Tmatrix[,,i,j] %*% ProbVec[,i,j]
+  }
+}
+
+beta
+
+
+ndisp <- 8 # number of timepoints to display
+# select exactly ndisp timepoints to display within dstep times
+tpoints <- 1+nstep%/%ndisp*0:(ndisp-1)
+
+# plot the probability distribution at ndisp time points
+for (k in 1:nhoods){
+  barplot(ProbVec[,k,tpoints], main= paste("SITN Model for Neighborhood", neighborhood_info$Neighborhood[k]), xlab= "Time steps (months)", ylab="Portion of Population", axes=TRUE,names.arg=tpoints,col=c('cornflowerblue','deeppink','plum2','blue'), legend.text=c("Suceptible", "Infected", "Treated", "Inactive"))
+}
+
+```
+
+
+```{r}
+## Inter-Neighborhood Model (All 77 Neighborhoods)--Distance Fix
+
+nstates <- 4 # set the number of states
+nstep <- 24 # number of time steps to propagate
+nhoods <- 77 # number of neighborhoods
+
+### Initial Probability Array
+pS <- array(0.39, dim = c(1, nhoods))
+pI <- array(0.01, dim = c(1, nhoods))
+pT <- array(0, dim = c(1, nhoods))
+pN <- array(0.6, dim = c(1, nhoods))
+ProbVec <- array(NA,dim = c(nstates, nhoods, nstep+1)) #initialize 3D probability matrix
+ProbVec[,,1] <- rbind(pS, pI, pT, pN)
+
+### Create Distance Array
+DistMat <- read.csv("DistanceMat.csv", header = TRUE, row.names = 1) # distance matrix 
+
+# Create function to normalize to max value of column
+lol <- function(vector) {
+ max(vector) - vector  #subtracts items in each colum by the max in that column
+}
+
+# Normalize over column (margin = 2)
+DistMat <- apply(DistMat, 2, lol) #applying lol to DistMat (,2,) means over columns
+
+# Scale to sum 1
+DistMat <- prop.table(DistMat, 2) #Changes them to proportions within that vector
+
+# Verify scaling (first row should be same as col number because it has the largest weight)
+lmao <- function(vector) {
+ order(vector, decreasing = TRUE)
+}
+lmfao <- apply(DistMat, 2, lmao)
+
+### Define Parameters ###
+gamma <- 0.06 #0.75 gon't get tested --> 0.75*(1/12) to account for year to recover naturally
+phi <- 0.26 #mean number of new partners
+
+# neighborhood metadata
+neighborhood_info <- read.csv("chicago-pop-data copy.csv", header = TRUE) # has neighborhood poverty level and name~number
+
+# define array of mu values for all neighborhoods
+univ_mu <- 0.25 #0.25 get tested--> 0.25*(poverty value)
+poverty_coefficients <- 1 - ((neighborhood_info$Percent_Poverty) * .01) 
+mu <- as.array(univ_mu * poverty_coefficients) # vector with neighborhood based rate of seeking treatment; higher chance of seeking treatment for lower percent poverty 
+
+
+### Define Beta and the Transition Matrix ###
+beta <- matrix(NA, nrow=nhoods, ncol=nstep+1)
+Tmatrix <- array(NA, dim= c(nstates, nstates, nhoods, nstep+1))
+
+
+for (j in 1: nstep){
+  for (i in 1:nhoods) {
+  beta[i,j] <- ((ProbVec[2,,j] %*% DistMat[,i])*0.65) #neighborhood 1, 2, etc..
+  Tmatrix[,1,i,1] <- c((1-(beta[i,1]+phi)), beta[i,1], 0, phi)
+  Tmatrix[,2,i,1] <- c(gamma, (1-(gamma+mu[i])), mu[i], 0)
+  Tmatrix[,3,i,1] <- c(1,0,0,0)
+  Tmatrix[,4,i,1] <- c(phi, 0, 0, (1-phi))
+  Tmatrix[,1,i,j] <- c((1-(beta[i,j]+phi)), beta[i,j], 0, phi)
+  Tmatrix[,2,i,j] <- c(gamma, (1-(gamma+mu[i])), mu[i], 0)
+  Tmatrix[,3,i,j] <- c(1,0,0,0)
+  Tmatrix[,4,i,j] <- c(phi, 0, 0, (1-phi))
+  ProbVec[,i,j+1] <- Tmatrix[,,i,j] %*% ProbVec[,i,j]
+  }
+}
+
+beta
+
+
+ndisp <- 8 # number of timepoints to display
+# select exactly ndisp timepoints to display within dstep times
+tpoints <- 1+nstep%/%ndisp*0:(ndisp-1)
+
+# plot the probability distribution at ndisp time points
+for (k in 1:nhoods){
+  barplot(ProbVec[,k,tpoints], main= paste("SITN Model for Neighborhood", neighborhood_info$Neighborhood[k]), xlab= "Time steps (months)", ylab="Portion of Population", axes=TRUE,names.arg=tpoints,col=c('cornflowerblue','deeppink','plum2','blue'), legend.text=c("Suceptible", "Infected", "Treated", "Inactive"))
+}
+
+```
+
