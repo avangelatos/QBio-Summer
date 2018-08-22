@@ -1,0 +1,161 @@
+---
+title: "Fuzzy Clusters"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+#install.packages("ppclust")
+#install.packages("factoextra")
+#install.packages("cluster")
+#install.packages("fclust")
+library(ppclust)
+library(factoextra)
+library(cluster)
+library(fclust)
+```
+
+```{r}
+# Import Data Set
+data(iris)
+x=iris[,-5] #removing the 5th column (flower type)
+x
+```
+```{r}
+# Plot data by groupings of flower types
+pairs(x, col=iris[,5])
+```
+
+# Fuzzy C-Means
+## Run FCM with Single Start
+```{r}
+# Runs algorithm to choose random  initial centroids
+v0 <- inaparc::kmpp(x, k=3)$v
+print(v0)
+
+res.fcm <- fcm(x, centers=v0)
+```
+```{r}
+as.data.frame(res.fcm$u)
+```
+```{r}
+res.fcm$v0
+```
+```{r}
+res.fcm$v
+```
+
+```{r}
+# Summary of Clustering Results
+summary(res.fcm)
+```
+```{r}
+# Computation time
+res.fcm$comp.time
+```
+
+## Run with multiple steps
+```{r}
+res.fcm <- fcm(x, centers=3, nstart=5, fixmemb=TRUE)
+
+# Displays best solution
+res.fcm$func.val
+
+#Displays Iterations
+res.fcm$iter
+
+#Displays Time
+res.fcm$comp.time
+```
+
+## Visualization of FCM
+```{r}
+# Pairwise Scatter Plots
+plotcluster(res.fcm, cp=1, trans=TRUE)
+```
+```{r}
+# Cluster plot with fviz_cluster
+res.fcm2 <- ppclust2(res.fcm, "kmeans")
+factoextra::fviz_cluster(res.fcm2, data = x, 
+  ellipse.type = "norm",
+  palette = "uchicago",
+  geom = "point",
+  repel = TRUE)
+```
+```{r}
+# Cluster plot with clusplot
+res.fcm3 <- ppclust2(res.fcm, "fanny")
+
+cluster::clusplot(scale(x), res.fcm3$cluster,  
+  main = "Cluster plot of Iris data set",
+  color=TRUE, labels = 2, lines = 2, cex=1)
+```
+
+# Try with the Breast Cancer Data
+```{r}
+fulldata <- read.csv(file="Wisconsin_Breast_Cancers.csv", header=TRUE)
+bcdata <- read.csv(file="Wisconsin_Breast_Cancers.csv", header=TRUE)[,2:10]
+class <- array(data= fulldata[,11])
+bcdata
+```
+```{r}
+#bcdata <- scale(bcdata)
+
+# Plot data by groupings of diagnosis
+pairs(bcdata, col=fulldata[,11])
+```
+
+## Run with multiple steps
+```{r}
+res.fcmbc <- fcm(bcdata, centers=2, nstart=5, fixmemb=TRUE)
+
+# Displays best solution
+res.fcmbc$func.val
+
+#Displays Iterations
+res.fcmbc$iter
+
+#Displays Time
+res.fcmbc$comp.time
+```
+
+## Visualization of FCM
+```{r}
+# Pairwise Scatter Plots
+plotcluster(res.fcmbc, cp=1, trans=TRUE)
+```
+```{r}
+table(res.fcmbc$cluster)
+```
+
+
+```{r}
+# Cluster plot with fviz_cluster
+res.fcmbc2 <- ppclust2(res.fcmbc, "kmeans")
+clustplot <- factoextra::fviz_cluster(res.fcmbc2, data = bcdata, 
+  ellipse.type = "norm",
+  repel = TRUE,
+  geom = "point",
+  show.clust.cent = TRUE
+)
+clustplot
+
+```
+
+```{r}
+# Cluster plot with clusplot
+res.fcmbc3 <- ppclust2(res.fcmbc, "fanny")
+
+clustplot2 <- cluster::clusplot(scale(bcdata), res.fcmbc3$cluster,  
+  main = "Cluster plot of Iris data set",
+  color=TRUE, labels = 2, lines = 2, cex=0.5)
+
+clustplot2
+```
+
+```{r}
+table()
+```
+
+
