@@ -1,0 +1,42 @@
+---
+title: "PCA of WBC Data"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+fulldata <- read.csv(file="Wisconsin_Breast_Cancers.csv", header=TRUE)
+bcdata <- read.csv(file="Wisconsin_Breast_Cancers.csv", header=TRUE)[,2:10]
+class <- array(data= fulldata[,11])
+bcdata
+```
+
+
+```{r}
+pca = prcomp(bcdata, scale. = TRUE)
+pca$sdev
+```
+
+```{r}
+head(pca$rotation)
+```
+
+```{r}
+scores = as.data.frame(pca$x)
+
+pcaplot <- ggplot(data = scores, aes(x = PC1, y = PC2, label = rownames(scores))) +
+  geom_hline(yintercept = 0, colour = "white") +
+  geom_vline(xintercept = 0, colour = "white") +
+  geom_point(aes(color = factor(class)), alpha = 0.8, size = 1) +
+  ggtitle("PCA plot of Wisconsin Breast Cancer Data")
+
+pcaplot
+```
+
+```{r}
+table(factor(class))
+```
+
