@@ -1,0 +1,69 @@
+---
+title: "Chlamydia Spatial Model"
+output: html_document
+---
+
+```{r}
+install.packages("ggmap")
+install.packages("rgdal")
+install.packages("rgeos")
+install.packages("maptools")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("tmap")
+install.packages("sp")
+install.packages("stringr")
+```
+
+```{r}
+library(ggplot2)
+library(ggmap)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(dplyr)
+library(tidyr)
+library(tmap)
+library(sp)
+library(stringr)
+
+WhichClinics="Free"
+WhichDistance='Great Circle'
+
+
+###############LOAD IN DATA######################
+Chicago = readOGR(dsn = "chicomm", layer = "chicomm")  ######Load GeoSpatial Data
+ExtraData = read.csv(file = "chicago-pop-data.csv", header = TRUE, sep = ",")  #####Load Population, Marriage Rate, .etc
+ExtraData = ExtraData[as.numeric(Chicago@data[["DISTNAME"]]), ]  ####Reoorder dfs to same order
+ClinicData = read.csv(file = "ChicagoClinics.csv", header = TRUE)
+AgeStrucData=read.csv(file="Chicago_Age_Structure.csv", header=TRUE)
+AgeStrucData=AgeStrucData[as.numeric(Chicago@data[["DISTNAME"]]),] ####Read in AGE STRUCTURE
+
+if(WhichDistance=="Great Circle"){
+  
+  #Great Circle Distance between neighborhoods
+  DistanceMat = spDists(Chicago, Chicago) 
+  
+  ########Clinic Great Circle Distance
+  NumericData=matrix(c(ClinicData$lon,ClinicData$lat), ncol=2)
+  ClinicDistanceMat=spDists(NumericData,coordinates(Chicago))
+  
+}else{
+  
+  ######Neighborhood Transit Data
+  TransitData = read.csv(file = "TransitDistances 2.csv", header = TRUE)  ####Reads in Neighborhood Data
+  regexp = "[[:digit:]]+"
+  NumericData = str_extract_all(TransitData$Distance.Time, regexp, simplify = TRUE)  ####Returns Matrix of Time and Distance Values
+  DistanceMat = 0.000621371 * matrix(as.numeric(NumericData[, 1]), nrow = sqrt(length(TransitData$Distance.Time)),  byrow = TRUE)  ####Codifies as Matrix of Distances in miles
+  #TimeMat = matrix(as.numeric(NumericData[, 2]), nrow = sqrt(length(TransitData$Distance.Time)),byrow = TRUE)  ####Codifies as Matrix of Times
+
+######Clinic Transit Data
+  ClinicTransitData = read.csv(file = "ClinicDistances 2.csv", header = TRUE)  ####Reads in Clinic Transit Distance Data
+  regexp = "[[:digit:]]+"
+  NumericData = str_extract_all(ClinicTransitData$Distance.Time, regexp, simplify = TRUE)  ####Returns Matrix of Time and Distance Values
+  ClinicDistanceMat = 0.000621371 * matrix(as.numeric(NumericData[, 1]), ncol = 77)  ####Codifies as Matrix of Distances in miles
+  #ClinicTimeMat = matrix(as.numeric(NumericData[, 2]), ncol = 77)  ####Codifies as Matrix of Times
+  
+}
+```
+
