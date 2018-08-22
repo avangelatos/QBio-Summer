@@ -1,0 +1,26 @@
+---
+title: "PCA with Generated Data"
+output: html_document
+---
+
+```{r}
+# Here's the R PCA testing script 
+
+a <- rnorm(100)
+b <- rnorm(100)
+
+x <- 3*a-2*b
+y <- -7*a -b
+z <- 8*a -10*b
+
+input.frame <- data.frame(x,y,z)
+
+pca.out <- prcomp(input.frame)
+print(pca.out)
+
+cov.mat <- cov(input.frame)
+pca.out1 <- eigen(cov.mat)
+print(pca.out1)
+
+```
+
